@@ -12,6 +12,7 @@ from ipaddress import ip_network
 
 from knack.log import get_logger
 
+from azure.cli.core.commands.validators import validate_tag
 from azure.cli.core.util import CLIError
 import azure.cli.core.keys as keys
 
@@ -237,3 +238,28 @@ def validate_load_balancer_idle_timeout(namespace):
     if namespace.load_balancer_idle_timeout is not None:
         if namespace.load_balancer_idle_timeout < 4 or namespace.load_balancer_idle_timeout > 120:
             raise CLIError("--load-balancer-idle-timeout must be in the range [4,120]")
+
+
+def validate_cluster_autoscaler_profile(namespace):
+    """ Validates that cluster autoscaler profile is acceptable by:
+        1. Extracting the key[=value] format to map
+        2. Validating that the key isn't empty
+    """
+    _extract_cluster_autoscaler_params(namespace)
+    if namespace.cluster_autoscaler_profile is not None:
+        for key in namespace.cluster_autoscaler_profile.keys():
+            _validate_cluster_autoscaler_key(key)
+
+
+def _validate_cluster_autoscaler_key(key):
+    if not key:
+        raise CLIError('Empty key specified for cluster-autoscaler parameter')
+
+
+def _extract_cluster_autoscaler_params(namespace):
+    """ Extracts multiple space-separated cluster autoscaler parameters in key[=value] format """
+    if isinstance(namespace.cluster_autoscaler_profile, list):
+        params_dict = {}
+        for item in namespace.cluster_autoscaler_profile:
+            params_dict.update(validate_tag(item))
+        namespace.cluster_autoscaler_profile = params_dict
